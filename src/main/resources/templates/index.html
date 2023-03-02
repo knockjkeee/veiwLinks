@@ -1,0 +1,10 @@
+<div class="col-md-4 mt-5">
+
+<!--    <div class="panel-body">Прикрепленные документы</div>-->
+    <div class="panel-body" th:text="${links} ? 'Прикрепленные документы': 'Документы отсутствуют'"></div>
+    <ul>
+        <li th:each="item :${links}">
+            <a th:href="${item.link}" th:text="${item.name}">Goose</a>
+        </li>
+    </ul>
+</div>
