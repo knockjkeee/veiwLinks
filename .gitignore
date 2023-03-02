@@ -1,3 +1,6 @@
+.DS_Store
+mvnw
+mvnw.cmd
 .mvn
 HELP.md
 target/
