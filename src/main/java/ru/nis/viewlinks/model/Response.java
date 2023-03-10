@@ -6,5 +6,5 @@ import java.util.List;
 
 @Data
 public class Response {
-    List<File> links;
+    List<FileLink> links;
 }

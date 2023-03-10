@@ -1,10 +1,15 @@
-<div class="col-md-4 mt-5">
-
-<!--    <div class="panel-body">Прикрепленные документы</div>-->
-    <div class="panel-body" th:text="${links} ? 'Прикрепленные документы': 'Документы отсутствуют'"></div>
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<body>
+<div>
+    <div th:text="${links} ? 'Прикрепленные документы': 'Документы отсутствуют'"></div>
     <ul>
         <li th:each="item :${links}">
             <a th:href="${item.link}" th:text="${item.name}">Goose</a>
         </li>
     </ul>
 </div>
+</body>
+</html>
