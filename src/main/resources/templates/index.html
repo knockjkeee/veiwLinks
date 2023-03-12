@@ -1,15 +1,27 @@
 <!DOCTYPE html>
 <html lang="en"
       xmlns:th="http://www.thymeleaf.org"
-      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+>
+<head>
+    <style>
+        div.content {
+            position: page;
+            height: 90%;
+            width: 90%;
+            /*padding: 10% 5%;*/
+        }
+    </style>
+</head>
+
 <body>
 <div>
-    <div th:text="${links} ? 'Прикрепленные документы': 'Документы отсутствуют'"></div>
-    <ul>
-        <li th:each="item :${links}">
-            <a th:href="${item.link}" th:text="${item.name}">Goose</a>
-        </li>
-    </ul>
+    <div class="content">
+        <ul>
+            <li th:each="item :${links}">
+                <a th:href="${item.link}" th:text="${item.name}">Goose</a>
+            </li>
+        </ul>
+    </div>
 </div>
 </body>
 </html>
