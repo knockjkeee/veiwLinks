@@ -8,32 +8,31 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import ru.nis.viewlinks.model.FileLink;
 
+import javax.servlet.http.HttpServletRequest;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Controller
-@RequestMapping("/api")
+@RequestMapping("/viewLinks/api")
+//@RequestMapping("/api")
 public class Endpoint {
 
     private final RestTemplate restTemplate;
     @Value("${web.url}")
     private String baseUrl;
 
-    private final String ERROR_500 = "Переход не может быть выполнен: Время жизни ключа авторизации истекло. Перезагрузите основное обращение";
+    private final String ERROR_404 = "Переход не может быть выполнен: Время жизни ключа авторизации истекло. Перезагрузите основное обращение";
+    private final String ERROR_500 = "Доступ запрещен";
 
     public Endpoint(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
@@ -57,11 +56,11 @@ public class Endpoint {
     @SneakyThrows
     @GetMapping(value = {"/jpeg/view/{encode}", "/jpg/view/{encode}"})
     public String getViewJPEG(Model model, @PathVariable String encode) {
-        String src = "/api/jpeg/" + encode;
+        String src = "/viewLinks/api/jpeg/" + encode;
         String[] data = getData(encode);
         byte[] fileContent = getBytes(data);
         if (fileContent.length == 0 ){
-            model.addAttribute("error", ERROR_500);
+            model.addAttribute("error", ERROR_404);
             return "viewImage";
         }
         model.addAttribute("src", src);
@@ -72,12 +71,12 @@ public class Endpoint {
     @SneakyThrows
     @GetMapping("/png/view/{encode}")
     public String getViewPNG(Model model, @PathVariable String encode) {
-        String src = "/api/png/" + encode;
+        String src = "/viewLinks/api/png/" + encode;
 
         String[] data = getData(encode);
         byte[] fileContent = getBytes(data);
         if (fileContent.length == 0 ){
-            model.addAttribute("error", ERROR_500);
+            model.addAttribute("error", ERROR_404);
             return "viewImage";
         }
 
@@ -86,20 +85,32 @@ public class Endpoint {
         return "viewImage";
     }
 
+    @SneakyThrows
+    @GetMapping("/pdf/view/{encode}")
+    public String getViewPDF(Model model, @PathVariable String encode) {
+        String src = "/api/png/" + encode;
 
-
+        String[] data = getData(encode);
+        byte[] fileContent = getBytes(data);
+        if (fileContent.length == 0 ){
+            model.addAttribute("error", ERROR_404);
+            return "viewImage";
+        }
+//        return "redirect:/api/pdf/" + encode;
+        return "redirect:/viewLinks/api/pdf/" + encode;
+    }
 
     @SneakyThrows
     @GetMapping("/pdf/{encode}")
-    public ResponseEntity<byte[]> getPDF(@PathVariable String encode) {
+    public ResponseEntity<byte[]> getPDF(@PathVariable String encode, HttpServletRequest request) {
+
+        HttpHeaders headers = new HttpHeaders();
+        if (validAccess(headers, request.getHeader("referer") == null)) return new ResponseEntity<byte[]>(ERROR_500.getBytes(StandardCharsets.UTF_8), headers, HttpStatus.BAD_REQUEST);
+
         String[] data = getData(encode);
         byte[] fileContent = getBytes(data);
-        HttpHeaders headers = new HttpHeaders();
-
-        if(fileContent.length == 0){
-            headers.setContentType(MediaType.parseMediaType("text/plain; charset=UTF-8"));
-            return new ResponseEntity<byte[]>(ERROR_500.getBytes(StandardCharsets.UTF_8), headers, HttpStatus.BAD_REQUEST);
-        }
+        if (validAccess(headers, fileContent.length == 0))
+            return new ResponseEntity<byte[]>(ERROR_404.getBytes(StandardCharsets.UTF_8), headers, HttpStatus.BAD_REQUEST);
 
         String fileName = data[2];
         headers.setContentType(MediaType.parseMediaType("application/pdf; charset=UTF-8"));
@@ -107,17 +118,26 @@ public class Endpoint {
         return new ResponseEntity<byte[]>(fileContent, headers, HttpStatus.OK);
     }
 
+    private boolean validAccess(HttpHeaders headers, boolean referer) {
+        if (referer) {
+            headers.setContentType(MediaType.parseMediaType("text/plain; charset=UTF-8"));
+            return true;
+        }
+        return false;
+    }
+
     @SneakyThrows
     @GetMapping(value = {"/jpeg/{encode}", "/jpg/{encode}"})
-    public ResponseEntity<byte[]> getJPEG(@PathVariable String encode) {
+    public ResponseEntity<byte[]> getJPEG(@PathVariable String encode, HttpServletRequest request) {
+
+        HttpHeaders headers = new HttpHeaders();
+        if (validAccess(headers, request.getHeader("referer") == null))
+            return new ResponseEntity<byte[]>(ERROR_500.getBytes(StandardCharsets.UTF_8), headers, HttpStatus.BAD_REQUEST);
+
         String[] data = getData(encode);
         byte[] fileContent = getBytes(data);
-        HttpHeaders headers = new HttpHeaders();
-
-        if(fileContent.length == 0){
-            headers.setContentType(MediaType.parseMediaType("text/plain; charset=UTF-8"));
-            return new ResponseEntity<byte[]>(ERROR_500.getBytes(StandardCharsets.UTF_8), headers, HttpStatus.BAD_REQUEST);
-        }
+        if (validAccess(headers, fileContent.length == 0))
+            return new ResponseEntity<byte[]>(ERROR_404.getBytes(StandardCharsets.UTF_8), headers, HttpStatus.BAD_REQUEST);
 
         String fileName = data[2];
         headers.setContentType(MediaType.parseMediaType("image/jpeg; charset=UTF-8"));
@@ -125,18 +145,18 @@ public class Endpoint {
         return new ResponseEntity<byte[]>(fileContent, headers, HttpStatus.OK);
     }
 
-
     @SneakyThrows
     @GetMapping("/png/{encode}")
-    public ResponseEntity<byte[]> getPNG(@PathVariable String encode) {
+    public ResponseEntity<byte[]> getPNG(@PathVariable String encode, HttpServletRequest request) {
+
+        HttpHeaders headers = new HttpHeaders();
+        if (validAccess(headers, request.getHeader("referer") == null))
+            return new ResponseEntity<byte[]>(ERROR_500.getBytes(StandardCharsets.UTF_8), headers, HttpStatus.BAD_REQUEST);
+
         String[] data = getData(encode);
         byte[] fileContent = getBytes(data);
-        HttpHeaders headers = new HttpHeaders();
-
-        if(fileContent.length == 0){
-            headers.setContentType(MediaType.parseMediaType("text/plain; charset=UTF-8"));
-            return new ResponseEntity<byte[]>(ERROR_500.getBytes(StandardCharsets.UTF_8), headers, HttpStatus.BAD_REQUEST);
-        }
+        if (validAccess(headers, fileContent.length == 0))
+            return new ResponseEntity<byte[]>(ERROR_404.getBytes(StandardCharsets.UTF_8), headers, HttpStatus.BAD_REQUEST);
 
         String fileName = data[2];
         headers.setContentType(MediaType.parseMediaType("image/png; charset=UTF-8"));
@@ -160,19 +180,19 @@ public class Endpoint {
             String link = null;
             if (names[index].endsWith(".pdf")) {
                 link = accessKey + "/" + files[index] + "/" + names[index];
-                link = "/api/pdf/" + Base64.getUrlEncoder().encodeToString(link.getBytes());
+                link = "/viewLinks/api/pdf/view/" + Base64.getUrlEncoder().encodeToString(link.getBytes());
             }
             if (names[index].endsWith(".jpeg")) {
                 link = accessKey + "/" + files[index] + "/" + names[index];
-                link = "/api/jpeg/view/" + Base64.getUrlEncoder().encodeToString(link.getBytes());
+                link = "/viewLinks/api/jpeg/view/" + Base64.getUrlEncoder().encodeToString(link.getBytes());
             }
             if (names[index].endsWith(".jpg")) {
                 link = accessKey + "/" + files[index] + "/" + names[index];
-                link = "/api/jpg/view/" + Base64.getUrlEncoder().encodeToString(link.getBytes());
+                link = "/viewLinks/api/jpg/view/" + Base64.getUrlEncoder().encodeToString(link.getBytes());
             }
             if (names[index].endsWith(".png")) {
                 link = accessKey + "/" + files[index] + "/" + names[index];
-                link = "/api/png/view/" + Base64.getUrlEncoder().encodeToString(link.getBytes());
+                link = "/viewLinks/api/png/view/" + Base64.getUrlEncoder().encodeToString(link.getBytes());
 
             }
 
