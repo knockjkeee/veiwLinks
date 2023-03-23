@@ -54,9 +54,23 @@ public class Endpoint {
     }
 
     @SneakyThrows
-    @GetMapping(value = {"/jpeg/view/{encode}", "/jpg/view/{encode}"})
-    public String getViewJPEG(Model model, @PathVariable String encode) {
-        String src = "/viewLinks/api/jpeg/" + encode;
+    @GetMapping(value = {"/jpeg/view/{encode}", "/jpg/view/{encode}", "/png/view/{encode}"})
+    public String getViewJPEG(Model model, @PathVariable String encode, HttpServletRequest request) {
+
+        if (request.getHeader("referer") == null) {
+            model.addAttribute("error", ERROR_500);
+            return "viewImage";
+        }
+
+        String src, type;
+        if (request.getHeader("referer").contains("png")){
+            src = "/viewLinks/api/png/" + encode;
+            type = "image/png";
+        }else{
+            src = "/viewLinks/api/jpeg/" + encode;
+            type = "image/jpeg";
+        }
+
         String[] data = getData(encode);
         byte[] fileContent = getBytes(data);
         if (fileContent.length == 0 ){
@@ -64,24 +78,7 @@ public class Endpoint {
             return "viewImage";
         }
         model.addAttribute("src", src);
-        model.addAttribute("type", "image/jpeg");
-        return "viewImage";
-    }
-
-    @SneakyThrows
-    @GetMapping("/png/view/{encode}")
-    public String getViewPNG(Model model, @PathVariable String encode) {
-        String src = "/viewLinks/api/png/" + encode;
-
-        String[] data = getData(encode);
-        byte[] fileContent = getBytes(data);
-        if (fileContent.length == 0 ){
-            model.addAttribute("error", ERROR_404);
-            return "viewImage";
-        }
-
-        model.addAttribute("src", src);
-        model.addAttribute("type", "image/png");
+        model.addAttribute("type", type);
         return "viewImage";
     }
 
@@ -118,16 +115,8 @@ public class Endpoint {
         return new ResponseEntity<byte[]>(fileContent, headers, HttpStatus.OK);
     }
 
-    private boolean validAccess(HttpHeaders headers, boolean referer) {
-        if (referer) {
-            headers.setContentType(MediaType.parseMediaType("text/plain; charset=UTF-8"));
-            return true;
-        }
-        return false;
-    }
-
     @SneakyThrows
-    @GetMapping(value = {"/jpeg/{encode}", "/jpg/{encode}"})
+    @GetMapping(value = {"/jpeg/{encode}", "/jpg/{encode}", "/png/{encode}"})
     public ResponseEntity<byte[]> getJPEG(@PathVariable String encode, HttpServletRequest request) {
 
         HttpHeaders headers = new HttpHeaders();
@@ -140,34 +129,26 @@ public class Endpoint {
             return new ResponseEntity<byte[]>(ERROR_404.getBytes(StandardCharsets.UTF_8), headers, HttpStatus.BAD_REQUEST);
 
         String fileName = data[2];
-        headers.setContentType(MediaType.parseMediaType("image/jpeg; charset=UTF-8"));
+        String type = fileName.contains("png") ? "image/png;" : "image/jpeg;";
+
+        headers.setContentType(MediaType.parseMediaType(type + " charset=UTF-8"));
         headers.add("content-disposition", "inline;filename=" + URLEncoder.encode(fileName, "UTF-8"));
         return new ResponseEntity<byte[]>(fileContent, headers, HttpStatus.OK);
     }
 
-    @SneakyThrows
-    @GetMapping("/png/{encode}")
-    public ResponseEntity<byte[]> getPNG(@PathVariable String encode, HttpServletRequest request) {
-
-        HttpHeaders headers = new HttpHeaders();
-        if (validAccess(headers, request.getHeader("referer") == null))
-            return new ResponseEntity<byte[]>(ERROR_500.getBytes(StandardCharsets.UTF_8), headers, HttpStatus.BAD_REQUEST);
-
-        String[] data = getData(encode);
-        byte[] fileContent = getBytes(data);
-        if (validAccess(headers, fileContent.length == 0))
-            return new ResponseEntity<byte[]>(ERROR_404.getBytes(StandardCharsets.UTF_8), headers, HttpStatus.BAD_REQUEST);
-
-        String fileName = data[2];
-        headers.setContentType(MediaType.parseMediaType("image/png; charset=UTF-8"));
-        headers.add("content-disposition", "inline;filename=" + URLEncoder.encode(fileName, "UTF-8"));
-        return new ResponseEntity<byte[]>(fileContent, headers, HttpStatus.OK);
-    }
 
     @GetMapping("/health")
     @ResponseBody
     public String test() {
         return "I am is alive";
+    }
+
+    private boolean validAccess(HttpHeaders headers, boolean referer) {
+        if (referer) {
+            headers.setContentType(MediaType.parseMediaType("text/plain; charset=UTF-8"));
+            return true;
+        }
+        return false;
     }
 
     private String[] getData(@PathVariable String encode) {
