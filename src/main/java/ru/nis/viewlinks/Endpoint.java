@@ -23,8 +23,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Controller
-@RequestMapping("/viewLinks/api")
-//@RequestMapping("/api")
+//@RequestMapping("/viewLinks/api")
+@RequestMapping("/api")
 public class Endpoint {
 
     private final RestTemplate restTemplate;
@@ -93,8 +93,8 @@ public class Endpoint {
             model.addAttribute("error", ERROR_404);
             return "viewImage";
         }
-//        return "redirect:/api/pdf/" + encode;
-        return "redirect:/viewLinks/api/pdf/" + encode;
+        return "redirect:/api/pdf/" + encode;
+//        return "redirect:/viewLinks/api/pdf/" + encode;
     }
 
     @SneakyThrows
